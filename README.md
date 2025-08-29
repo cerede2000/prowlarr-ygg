@@ -2,7 +2,7 @@
 
 [![Auto Rebuild](https://github.com/almottier/prowlarr-ygg/actions/workflows/auto-rebuild.yml/badge.svg)](https://github.com/almottier/prowlarr-ygg/actions/workflows/auto-rebuild.yml)
 
-A Prowlarr Docker image with the YGG-API indexer pre-installed for YGGTorrent support.
+An up-to-date Prowlarr Docker image with the YGG-API indexer pre-installed for YGGTorrent support.
 
 ```text
 ghcr.io/almottier/prowlarr-ygg
@@ -12,7 +12,7 @@ ghcr.io/almottier/prowlarr-ygg
 
 - Based on the latest [hotio/prowlarr](https://hotio.dev/containers/prowlarr/) image
 - [YGG-API indexer](https://gist.github.com/Clemv95/8bfded23ef23ec78f6678896f42a2b60) using [yggapi](https://yggapi.eu/) pre-installed in `/config/Definitions/Custom/`
-- Automatically rebuilds when the base image is updated
+- Automatically rebuilds when the base image or the YGG-API indexer is updated
 - Ready to use after container startup
 
 ## Usage

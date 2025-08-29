@@ -38,19 +38,40 @@ jobs:
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
           echo "Current digest: $DIGEST"
           
+      - name: Get current ygg-api indexer gist hash
+        id: gist-hash
+        run: |
+          # Get the latest commit hash from the YGG-API gist
+          GIST_HASH=$(curl -s https://api.github.com/gists/8bfded23ef23ec78f6678896f42a2b60 | jq -r '.history[0].version')
+          echo "hash=$GIST_HASH" >> $GITHUB_OUTPUT
+          echo "Current gist hash: $GIST_HASH"
+          
       - name: Check if rebuild needed
         id: check-rebuild
         run: |
-          # Get the last successful build's base image digest from repository variables
-          LAST_DIGEST="${{ vars.LAST_BASE_DIGEST || 'none' }}"
-          CURRENT_DIGEST="${{ steps.base-digest.outputs.digest }}"
+          # Get the last successful build's digests from repository variables
+          LAST_BASE_DIGEST="${{ vars.LAST_BASE_DIGEST || 'none' }}"
+          CURRENT_BASE_DIGEST="${{ steps.base-digest.outputs.digest }}"
+          LAST_GIST_HASH="${{ vars.LAST_GIST_HASH || 'none' }}"
+          CURRENT_GIST_HASH="${{ steps.gist-hash.outputs.hash }}"
           
-          if [ "$LAST_DIGEST" != "$CURRENT_DIGEST" ]; then
-            echo "rebuild=true" >> $GITHUB_OUTPUT
+          REBUILD=false
+          
+          if [ "$LAST_BASE_DIGEST" != "$CURRENT_BASE_DIGEST" ]; then
             echo "Base image updated. Rebuild needed."
+            REBUILD=true
+          fi
+          
+          if [ "$LAST_GIST_HASH" != "$CURRENT_GIST_HASH" ]; then
+            echo "YGG-API gist updated. Rebuild needed."
+            REBUILD=true
+          fi
+          
+          if [ "$REBUILD" = true ]; then
+            echo "rebuild=true" >> $GITHUB_OUTPUT
           else
             echo "rebuild=false" >> $GITHUB_OUTPUT
-            echo "No update needed."
+            echo "No updates found. No rebuild needed."
           fi
           
       - name: Build and push
@@ -60,6 +81,8 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            GIST_HASH=${{ steps.gist-hash.outputs.hash }}
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
@@ -68,11 +91,12 @@ jobs:
           labels: |
             org.opencontainers.image.visibility=public
           
-      - name: Update base image digest
+      - name: Update tracking variables
         if: steps.check-rebuild.outputs.rebuild == 'true'
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          # Update repository variable with new digest using gh CLI
+          # Update repository variables with new digests/hashes using gh CLI
           # https://github.com/almottier/prowlarr-ygg/settings/variables/actions
           gh variable set LAST_BASE_DIGEST --body "${{ steps.base-digest.outputs.digest }}"
+          gh variable set LAST_GIST_HASH --body "${{ steps.gist-hash.outputs.hash }}"
